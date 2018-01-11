@@ -78,7 +78,10 @@ class Buffer {
     await this.db.del(this.getDatabaseKey())
   }
 
-  canUpdate ({baseTextDigest}) {}
+  async hasBaseTextDigest (digest) {
+    const state = await this.getSavedState()
+    return state.baseTextDigest === digest
+  }
 
   async update (props) {
     const oldState = await this.getSavedState()
