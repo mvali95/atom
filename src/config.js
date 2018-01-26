@@ -632,8 +632,8 @@ class Config {
       }
 
       getVal = this.getRawValueFrom(setting, keyPath, options)
-      if (getVal != null) {
-        const ret = this.replaceWithDefaultValue(getVal, keyPath, options)
+      if (getVal != null && !(isPlainObject(getVal) && _.isEmpty(getVal))) {
+        return this.replaceWithDefaultValue(getVal, keyPath, options)
       }
     }
     return this.replaceWithDefaultValue(getVal, keyPath, options)

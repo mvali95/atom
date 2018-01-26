@@ -2217,8 +2217,15 @@ describe('Config', () => {
         atom.config.resetProjectSettings({})
         expect(atom.config.get('foo.bar')).toBeUndefined()
       })
-      it("should not write to the global configuration file")
-      it("should not be able to have multiple working configs")
+      it("should not write to the global configuration file", () => {
+        atom.config.resetProjectSettings({'foo': 'bar'})
+        expect(atom.config.save).not.toHaveBeenCalled()
+      })
+      it("should not be able to have multiple working configs", () => {
+        atom.config.resetProjectSettings({"foo" : {"bar" : "baz"}})
+        atom.config.resetProjectSettings({"goo" : {"gar" : "gaz"}})
+        expect(atom.config.get('goo.gar')).toBe('gaz')
+      })
       it("should forget about previous project config after update")
       it("should trigger onChange for config object")
     })
