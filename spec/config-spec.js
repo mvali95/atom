@@ -2202,4 +2202,52 @@ describe('Config', () => {
       })
     })
   })
+
+  describe("project/root specific configs", () => {
+    describe("config.setConfigForRoot", () => {
+      it("should not write to the global configuration file")
+      it("should be able to set multiple root configs")
+      it("should not be able to have multiple root configs with same path")
+      it("should trigger onChange for config object")
+      it("ignores roots it can't resolve (such as Nuclide remote URIs)")
+    })
+
+    describe("config.reset", () => {
+      it("gracefully handles invalid config objects", () => {
+        atom.config.resetProjectSettings({})
+        expect(atom.config.get('foo.bar')).toBeUndefined()
+      })
+      it("should not write to the global configuration file")
+      it("should not be able to have multiple working configs")
+      it("should forget about previous project config after update")
+      it("should trigger onChange for config object")
+    })
+
+    describe("config.get", () => {
+      describe("getting root configs", () => {
+
+        it('should properly get root configs')
+        it('should get root configs for multiple roots')
+        it('should get root configs for most recently set root if path is same')
+        it("should get root config settings with higher priority than global settings")
+        it("correctly gets nested properties for root configs")
+        it("successfully gets configurations with scope params")
+        it("returns a deep clone of the property value")
+      })
+
+      describe("project configs", () => {
+        it('should properly get project configs')
+        it("should get project settings with higher priority than global settings")
+        it("should get project settings with higher priority than root config settings")
+        it("correctly gets nested properties for project configs")
+        it("successfully gets configurations with scope params")
+        it("returns a deep clone of the property value")
+      })
+    })
+
+    describe("config.getAll", () => {
+
+    })
+
+  })
 })
