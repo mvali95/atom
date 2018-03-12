@@ -56,7 +56,9 @@ class NativeCompileCache {
       require.cache = Module._cache
 
       let dirname = path.dirname(filename)
-
+      if (filename === "/Users/kuychaco/github/github/lib/views/author-input.tsx") {
+        // debugger
+      }
       // create wrapper function
       let wrapper = Module.wrap(content)
 
@@ -74,8 +76,10 @@ class NativeCompileCache {
         try {
           compilationResult = cachedVm.runInThisContext(wrapper, filename)
         } catch (err) {
+          // debugger
           console.error(`Error running script ${filename}`)
-          throw err
+          // throw err
+          compilationResult = {result: eval(wrapper)}
         }
         if (compilationResult.cacheBuffer) {
           self.cacheStore.set(cacheKey, compilationResult.cacheBuffer)
