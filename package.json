@@ -15,8 +15,8 @@
   "electronVersion": "2.0.1",
   "dependencies": {
     "@atom/nsfw": "^1.0.18",
-    "@atom/watcher": "1.0.3",
     "@atom/source-map-support": "^0.3.4",
+    "@atom/watcher": "1.0.3",
     "async": "0.2.6",
     "atom-keymap": "8.2.10",
     "atom-select-list": "^0.7.0",
@@ -133,7 +133,7 @@
     "symbols-view": "0.118.2",
     "tabs": "0.109.2",
     "timecop": "0.36.2",
-    "tree-view": "0.222.0",
+    "tree-view": "0.223.0",
     "update-package-dependencies": "0.13.1",
     "welcome": "0.36.6",
     "whitespace": "0.37.6",
