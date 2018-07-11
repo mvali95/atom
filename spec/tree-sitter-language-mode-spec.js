@@ -522,7 +522,7 @@ describe('TreeSitterLanguageMode', () => {
         ])
       })
 
-      it('handles injections that intersect', async () => {
+      ffit('handles injections that intersect', async () => {
         const ejsGrammar = new TreeSitterGrammar(atom.grammars, ejsGrammarPath, {
           id: 'ejs',
           parser: 'tree-sitter-embedded-template',
@@ -547,13 +547,17 @@ describe('TreeSitterLanguageMode', () => {
         atom.grammars.addGrammar(jsGrammar)
         atom.grammars.addGrammar(htmlGrammar)
 
-        buffer.setText('<body>\n<script>\nb(<%= c.d %>)\n</script>\n</body>')
         const languageMode = new TreeSitterLanguageMode({buffer, grammar: ejsGrammar, grammars: atom.grammars})
         buffer.setLanguageMode(languageMode)
 
+        let text = '<body>\n<script>\nb(html `<div><%= c.d %></div>`)\n</script>\n</body>'
+        let i = 18; while (i --> 0) {
+          buffer.setText(text += text)
+          await nextHighlightingUpdate(languageMode)
+          await nextHighlightingUpdate(languageMode)
+        }
+
         // 4 parses: EJS, HTML, template JS, script tag JS
-        await nextHighlightingUpdate(languageMode)
-        await nextHighlightingUpdate(languageMode)
         await nextHighlightingUpdate(languageMode)
         await nextHighlightingUpdate(languageMode)
 

@@ -1,5 +1,6 @@
 const Parser = require('tree-sitter')
 const {Point, Range} = require('text-buffer')
+const {spliceArray} = require('text-buffer/lib/helpers')
 const {Patch} = require('superstring')
 const {Emitter, Disposable} = require('event-kit')
 const ScopeDescriptor = require('./scope-descriptor')
@@ -45,7 +46,7 @@ class TreeSitterLanguageMode {
     this.config = config
     this.grammarRegistry = grammars
     this.parser = new Parser()
-    this.rootLanguageLayer = new LanguageLayer(this, grammar)
+    this.rootLanguageLayer = new LanguageLayer(null, this, grammar)
     this.injectionsMarkerLayer = buffer.addMarkerLayer()
 
     this.rootScopeDescriptor = new ScopeDescriptor({scopes: [this.grammar.id]})
@@ -60,7 +61,7 @@ class TreeSitterLanguageMode {
     this.parseQueue = async.queue(async ({language, oldTree, ranges}, done) => {
       const parser = this.parsers.pop() || new Parser()
       parser.setLanguage(language)
-      const newTree = await parser.parseTextBuffer(this.buffer.buffer, oldTree, {
+      const newTree = parser.parseTextBufferSync(this.buffer.buffer, oldTree, {
         syncOperationLimit: 1000,
         includedRanges: ranges
       })
@@ -74,11 +75,12 @@ class TreeSitterLanguageMode {
         const startRow = oldRange.start.row
         const oldEndRow = oldRange.end.row
         const newEndRow = newRange.end.row
-        this.isFoldableCache.splice(
+        console.log(newEndRow - startRow)
+        const oldFoldableCache = this.isFoldableCache
+        spliceArray(this.isFoldableCache,
           startRow,
           oldEndRow - startRow,
-          ...new Array(newEndRow - startRow)
-        )
+          new Array(newEndRow - startRow))
       }
 
       this.rootLanguageLayer.update(NodeRangeSet.FULL)
@@ -110,8 +112,9 @@ class TreeSitterLanguageMode {
   }
 
   parse (language, oldTree, ranges) {
-    return new Promise(resolve =>
-      this.parseQueue.push({language, oldTree, ranges}, (error, tree) => resolve(tree))
+    return new Promise((resolve, reject) =>
+      this.parseQueue.push({language, oldTree, ranges},
+        (error, tree) => error ? reject(error) : resolve(tree))
     )
   }
 
@@ -457,14 +460,28 @@ class TreeSitterLanguageMode {
   }
 }
 
+
+let nextLanguageLayerId = 0
 class LanguageLayer {
-  constructor (languageMode, grammar, contentChildTypes) {
+  constructor (parentLayer, languageMode, grammar, contentChildTypes) {
+    this.up = parentLayer
     this.languageMode = languageMode
     this.grammar = grammar
     this.tree = null
     this.currentParsePromise = null
     this.patchSinceCurrentParseStarted = null
     this.contentChildTypes = contentChildTypes
+    LanguageLayer.ALL[this.id = nextLanguageLayerId++] = this
+    this.parser = new Parser
+  }
+
+  parse (language, oldTree, ranges) {
+    const {parser} = this
+    parser.setLanguage(language)
+    return parser.parseTextBuffer(this.languageMode.buffer.buffer, oldTree, {
+      syncOperationLimit: 1000,
+      includedRanges: ranges
+    })
   }
 
   buildHighlightIterator () {
@@ -508,9 +525,12 @@ class LanguageLayer {
   async update (nodeRangeSet) {
     if (this.currentParsePromise) return this.currentParsePromise
 
+    if (this.id === 5) debugger
     this.currentParsePromise = this._performUpdate(nodeRangeSet)
     await this.currentParsePromise
     this.currentParsePromise = null
+
+    if (!this.tree) debugger
 
     if (this.patchSinceCurrentParseStarted) {
       const changes = this.patchSinceCurrentParseStarted.getChanges()
@@ -535,6 +555,7 @@ class LanguageLayer {
   }
 
   async _performUpdate (nodeRangeSet) {
+    if (this.id === 3) debugger
     let includedRanges
     if (nodeRangeSet === NodeRangeSet.FULL) {
       includedRanges = null
@@ -543,11 +564,14 @@ class LanguageLayer {
       if (includedRanges.length === 0) return
     }
 
-    const tree = await this.languageMode.parse(
+    this.log('awaiting parse includedRanges:', includedRanges)
+    const tree = await this.parse(
       this.grammar.languageModule,
       this.tree,
       includedRanges
     )
+    this.includedRanges = includedRanges
+    this.log('did parse', tree)
     tree.buffer = this.languageMode.buffer
 
     let affectedRange
@@ -570,6 +594,7 @@ class LanguageLayer {
       }
     } else {
       this.tree = tree
+      this.log('tree ->', this.tree)
       this.languageMode.emitRangeUpdate(rangeForNode(tree.rootNode))
       if (includedRanges) {
         affectedRange = new Range(includedRanges[0].startPosition, last(includedRanges).endPosition)
@@ -578,10 +603,21 @@ class LanguageLayer {
       }
     }
 
+    this.log('populating injections affectedRange:', affectedRange, 'nodeRangeSet:', nodeRangeSet)
     await this._populateInjections(affectedRange, nodeRangeSet)
+    this.log('did populate injections.')
+  }
+
+  log (...args) {
+    console.log(`Layer ${this.id} (${this.grammar.id})`, '—', ...args)
+  }
+
+  get path() {
+    return (this.up ? this.up.path : '') + `/${this.grammar.id}#${this.id}`
   }
 
   _populateInjections (range, nodeRangeSet) {
+    if (this.id === 3) debugger
     const {injectionsMarkerLayer, grammarForLanguageString} = this.languageMode
 
     const existingInjectionMarkers = injectionsMarkerLayer
@@ -623,7 +659,7 @@ class LanguageLayer {
         )
         if (!marker) {
           marker = injectionsMarkerLayer.markRange(injectionRange)
-          marker.languageLayer = new LanguageLayer(this.languageMode, grammar, injectionPoint.contentChildTypes)
+          marker.languageLayer = new LanguageLayer(this, this.languageMode, grammar, injectionPoint.contentChildTypes)
           marker.parentLanguageLayer = this
         }
 
@@ -699,6 +735,7 @@ class HighlightIterator {
     }
   }
 }
+LanguageLayer.ALL = []
 
 class LayerHighlightIterator {
   constructor (languageLayer, treeCursor) {
