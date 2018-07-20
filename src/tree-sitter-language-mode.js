@@ -6,9 +6,13 @@ const ScopeDescriptor = require('./scope-descriptor')
 const TokenizedLine = require('./tokenized-line')
 const TextMateLanguageMode = require('./text-mate-language-mode')
 
+require('./tree-viz')
+
 let nextId = 0
 const MAX_RANGE = new Range(Point.ZERO, Point.INFINITY).freeze()
 const PARSER_POOL = []
+
+global.Parser = Parser
 
 class TreeSitterLanguageMode {
   static _patchSyntaxNode () {
@@ -104,10 +108,10 @@ class TreeSitterLanguageMode {
   Section - Highlighting
   */
 
-  buildHighlightIterator () {
+  buildHighlightIterator (options) {
     const layerIterators = [
-      this.rootLanguageLayer.buildHighlightIterator(),
-      ...this.injectionsMarkerLayer.getMarkers().map(m => m.languageLayer.buildHighlightIterator())
+      this.rootLanguageLayer.buildHighlightIterator(options),
+      ...this.injectionsMarkerLayer.getMarkers().map(m => m.languageLayer.buildHighlightIterator(options))
     ]
     return new HighlightIterator(this, layerIterators)
   }
@@ -458,9 +462,9 @@ class LanguageLayer {
     this.contentChildTypes = contentChildTypes
   }
 
-  buildHighlightIterator () {
+  buildHighlightIterator (options) {
     if (this.tree) {
-      return new LayerHighlightIterator(this, this.tree.walk())
+      return new LayerHighlightIterator(this, this.tree.walk(), options)
     } else {
       return new NullHighlightIterator()
     }
@@ -703,6 +707,10 @@ class HighlightIterator {
     return last(this.iterators).getOpenScopeIds()
   }
 
+  get cursor() {
+    return last(this.iterators).treeCursor
+  }
+
   logState () {
     const iterator = last(this.iterators)
     if (iterator.treeCursor) {
@@ -719,8 +727,13 @@ class HighlightIterator {
 }
 
 class LayerHighlightIterator {
-  constructor (languageLayer, treeCursor) {
+  constructor (languageLayer, treeCursor, {currentScopeName, idForScope}={}) {
     this.languageLayer = languageLayer
+
+    // Injectable methods
+    if (currentScopeName) this.currentScopeName = currentScopeName
+    if (idForScope) this.idForScope = idForScope
+
     this.treeCursor = treeCursor
     this.atEnd = false
 
@@ -907,12 +920,13 @@ class LayerHighlightIterator {
     return this.languageLayer.grammar.scopeMap.get(
       this.containingNodeTypes,
       this.containingNodeChildIndices,
-      this.treeCursor.nodeIsNamed
+      this.treeCursor.nodeIsNamed,
+      this.treeCursor
     )
   }
 
   idForScope (scopeName) {
-    return this.languageLayer.languageMode.grammar.idForScope(scopeName)
+    return this.languageLayer.grammar.idForScope(scopeName)
   }
 }
 
@@ -1059,3 +1073,166 @@ function last (array) {
 TreeSitterLanguageMode.LanguageLayer = LanguageLayer
 
 module.exports = TreeSitterLanguageMode
+
+const PATH = Symbol('path')
+const SELECT = Symbol('select')
+const CHILD = Symbol('child')
+
+Parser.SyntaxNode.prototype [SELECT] = function([op, ...rest]=[]) {
+  if (!op) return this
+
+  const method = this[op.type]
+  if (typeof method !== 'function') return None
+  return this[op.type](op)[SELECT](rest)
+}
+
+Parser.SyntaxNode.prototype [CHILD] = function(ofType) {
+  return this.children.filter(c => c.type === ofType)
+}
+
+TreeSitterLanguageMode.prototype [SELECT] = function(path) {
+  return this.tree.rootNode [SELECT] (path)
+}
+
+const selectByPath = path => (db=$LM()) => {
+  if (typeof db[SELECT] !== 'function')
+    throw new Error(`${db.constructor.name} doesn't support path queries`)
+  return db[SELECT](path)
+}
+
+const queryByAppending = type => path => (...params) => PathQuery(...path, {
+  type, params
+})
+
+const queryByAppendingChild = queryByAppending(CHILD)
+
+const PathQuery = (...path) => new Proxy({}, {
+  get(target, prop, receiver) {
+    switch (prop) {
+      case PATH: return path
+      case SELECT: return selectByPath(path)
+      case CHILD: return queryByAppendingChild(path)
+    }
+    if (prop === PATH) return path
+    return PathQuery(...path, {type: CHILD, ofType: prop})
+  }
+})
+
+const childOfType = ofType => {
+  const anyChildOfType = where => ({
+    type: CHILD, ofType, where
+  })
+  anyChildOfType.type = CHILD
+  anyChildOfType.ofType = ofType
+}
+
+const ChildQueryProxy = new Proxy({}, {
+  get(cache, prop, receiver) {
+    return cache[prop] || (cache[prop] = childOfType(prop))
+  }
+})
+
+const COUNT = Symbol('Selection/count')
+
+const WHERE = Symbol('Selection/where')
+const AS_ARRAY = Symbol('Selection/as Array')
+const MATCH = Symbol('Selection/match')
+
+const TEXT = Symbol('Selection/item text')
+const TYPE = Symbol('Selection/item type')
+
+Object.assign(global, {COUNT, WHERE, AS_ARRAY, CHILD, MATCH, TEXT, TYPE})
+
+const None = {
+  [COUNT]: 0,
+  [AS_ARRAY]: [],
+  toString() {
+    return "(None)"
+  }
+}
+
+function matchSelf(where) { return where(this) }
+Object.prototype[MATCH] = matchSelf
+Number.prototype[MATCH] = matchSelf
+String.prototype[MATCH] = matchSelf
+Array.prototype[MATCH] = function(where) {
+  return this.filter(_ => _[MATCH](where))
+}
+
+const arrayBroadcastMethod = method => function(...params) {
+  return this.map(item => {
+    if (typeof item[method] === 'function')
+      return item[method](...params)
+    return None
+  })
+}
+
+const arrayBroadcastProperty = property => ({
+  get() {
+    return this.map(item => item[property])
+  }
+})
+
+Array.prototype[CHILD] = arrayBroadcastMethod(CHILD)
+Object.defineProperty(Array.prototype, TEXT, arrayBroadcastProperty(TEXT))
+Object.defineProperty(Array.prototype, TYPE, arrayBroadcastProperty(TYPE))
+
+Object.defineProperties(Parser.SyntaxNode.prototype, {
+  [TEXT]: { get() { return this.text } },
+  [TYPE]: { get() { return this.type } },
+})
+
+Object.defineProperty(Number.prototype, COUNT, { value: 1 })
+Object.defineProperty(Object.prototype, COUNT, { value: 1 })
+Object.defineProperty(String.prototype, COUNT, { value: 1 })
+
+Object.defineProperty(Array.prototype, COUNT, {
+  get() {
+    return this.reduce((sum, s) => sum + s [COUNT], 0)
+  }
+})
+
+const selectionBufferByAppending = (selected=[], child) => {
+  if (Array.isArray(child)) return child.reduce(selectionBufferByAppending, selected)
+  if (typeof child === 'undefined' || child === null || !child[COUNT]) return selected
+  selected.push(child)
+  return selected
+}
+
+const Select = (...targets) => {
+  const selected = targets.reduce(selectionBufferByAppending, [])
+  if (!selected.length) return None
+
+  return new Proxy(_=>_, {
+    get(cache, prop, receiver)  {
+      const index = typeof prop !== 'symbol' && Number(prop)
+      if (index || index === 0)
+        return selected[index]
+      if (prop === COUNT)
+        return selected [COUNT]
+      if (prop === AS_ARRAY)
+        return selected
+      if (prop === TEXT || prop === TYPE)
+        return Select(selected [prop])
+      if (prop === Symbol.toStringTag)
+        return () => `[Selection [${selected [COUNT]}]`
+      if (prop === 'toString')
+        return () => `[Selection [${selected [COUNT]}]]`
+      return Select(selected [CHILD] (prop))
+    },
+
+    apply(target, ctx, [where]) {
+      if (typeof where !== 'function') return None
+      return Select(selected.filter(s => s [MATCH] (where)))
+    },
+  })
+}
+
+global.$ = (root=$LM().tree.rootNode, ...etc) => Select(root, ...etc)
+global.$[Symbol.toPrimitive] = () => AS_ARRAY
+
+global.PATH = PATH
+global.SELECT = SELECT
+
+global.$LM = () => atom.workspace.getActiveTextEditor().languageMode
+global.$T = () => $LM().tree
