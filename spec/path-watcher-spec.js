@@ -1,6 +1,6 @@
 /** @babel */
 
-import {it, beforeEach, afterEach, promisifySome} from './async-spec-helpers'
+import {it, fdescribe, fit, beforeEach, afterEach, promisifySome} from './async-spec-helpers'
 import tempCb from 'temp'
 import fsCb from 'fs-plus'
 import path from 'path'
@@ -13,7 +13,7 @@ tempCb.track()
 const fs = promisifySome(fsCb, ['writeFile', 'mkdir', 'symlink', 'appendFile', 'realpath'])
 const temp = promisifySome(tempCb, ['mkdir'])
 
-describe('watchPath', function () {
+fdescribe('watchPath', function () {
   let subs
 
   beforeEach(function () {
@@ -87,15 +87,19 @@ describe('watchPath', function () {
     })
 
     it('reuses an existing native watcher on a parent directory and filters events', async function () {
+      process.stdout.write("\n*** temp.mkdir")
       const rootDir = await temp.mkdir('atom-fsmanager-test-').then(fs.realpath)
       const rootFile = path.join(rootDir, 'rootfile.txt')
       const subDir = path.join(rootDir, 'subdir')
       const subFile = path.join(subDir, 'subfile.txt')
 
+      process.stdout.write("\n*** fs.mkdir")
       await fs.mkdir(subDir)
 
       // Keep the watchers alive with an undisposed subscription
+      process.stdout.write("\n*** rootWatcher watchPath")
       const rootWatcher = await watchPath(rootDir, {}, () => {})
+      process.stdout.write("\n*** childWatcher watchPath")
       const childWatcher = await watchPath(subDir, {}, () => {})
 
       expect(rootWatcher.native).toBe(childWatcher.native)
@@ -105,12 +109,17 @@ describe('watchPath', function () {
         waitForChanges(rootWatcher, subFile),
         waitForChanges(childWatcher, subFile)
       ])
+      process.stdout.write("\n*** writeFile subfile")
       await fs.writeFile(subFile, 'subfile\n', {encoding: 'utf8'})
+      process.stdout.write("\n*** await firstChanges")
       await firstChanges
 
       const nextRootEvent = waitForChanges(rootWatcher, rootFile)
+      process.stdout.write("\n*** writeFile rootFile")
       await fs.writeFile(rootFile, 'rootfile\n', {encoding: 'utf8'})
+      process.stdout.write("\n*** await nextRootEvent")
       await nextRootEvent
+      process.stdout.write("\n*** done!")
     })
 
     it('adopts existing child watchers and filters events appropriately to them', async function () {
