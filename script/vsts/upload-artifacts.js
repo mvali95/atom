@@ -4,6 +4,7 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const glob = require('glob')
+const childProcess = require('child_process')
 const publishRelease = require('publish-release')
 const releaseNotes = require('./lib/release-notes')
 const uploadToS3 = require('./lib/upload-to-s3')
@@ -93,6 +94,15 @@ async function uploadArtifacts () {
 
     console.log(`New release notes:\n\n${newReleaseNotes}`)
 
+    // Get the SHA for the latest commit in this branch if it's
+    // a normal Atom release. Nightly releases are created on a
+    // different repo that doesn't have the same commit history.
+    let tagCommitSha
+    if (!isNightlyRelease) {
+      const gitOutput = childProcess.spawnSync('git', ['rev-parse', 'HEAD'])
+      tagCommitSha = gitOutput.stdout.toString().trim()
+    }
+
     console.log(`Creating GitHub release v${releaseVersion}`)
     const release =
       await publishReleaseAsync({
@@ -107,6 +117,7 @@ async function uploadArtifacts () {
         editRelease: true,
         reuseRelease: true,
         skipIfPublished: true,
+        target_commitish: tagCommitSha,
         assets
       })
 
