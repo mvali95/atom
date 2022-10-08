@@ -1,0 +1,68 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.0
+ignore: {}
+# patches apply the minimum changes required to fix a vulnerability
+patch:
+  'npm:extend:20180424':
+    - atom-package-manager > npm > request > extend:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > node-gyp > request > extend:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > npm-registry-client > request > extend:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > npm-lifecycle > node-gyp > request > extend:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > libcipm > npm-lifecycle > node-gyp > request > extend:
+        patched: '2022-10-08T17:03:05.557Z'
+  'npm:hoek:20180212':
+    - atom-package-manager > npm > request > hawk > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > request > hawk > boom > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > request > hawk > sntp > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > node-gyp > request > hawk > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > npm-registry-client > request > hawk > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > request > hawk > cryptiles > boom > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > node-gyp > request > hawk > boom > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > npm-registry-client > request > hawk > boom > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > node-gyp > request > hawk > sntp > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > npm-registry-client > request > hawk > sntp > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > npm-lifecycle > node-gyp > request > hawk > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > node-gyp > request > hawk > cryptiles > boom > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > npm-registry-client > request > hawk > cryptiles > boom > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > npm-lifecycle > node-gyp > request > hawk > boom > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > npm-lifecycle > node-gyp > request > hawk > sntp > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > libcipm > npm-lifecycle > node-gyp > request > hawk > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > npm-lifecycle > node-gyp > request > hawk > cryptiles > boom > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > libcipm > npm-lifecycle > node-gyp > request > hawk > boom > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > libcipm > npm-lifecycle > node-gyp > request > hawk > sntp > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > libcipm > npm-lifecycle > node-gyp > request > hawk > cryptiles > boom > hoek:
+        patched: '2022-10-08T17:03:05.557Z'
+  SNYK-JS-HTTPSPROXYAGENT-469131:
+    - atom-package-manager > npm > pacote > make-fetch-happen > https-proxy-agent:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > npm-profile > make-fetch-happen > https-proxy-agent:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > npm-registry-fetch > make-fetch-happen > https-proxy-agent:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > libcipm > pacote > make-fetch-happen > https-proxy-agent:
+        patched: '2022-10-08T17:03:05.557Z'
+    - atom-package-manager > npm > libnpmhook > npm-registry-fetch > make-fetch-happen > https-proxy-agent:
+        patched: '2022-10-08T17:03:05.557Z'
